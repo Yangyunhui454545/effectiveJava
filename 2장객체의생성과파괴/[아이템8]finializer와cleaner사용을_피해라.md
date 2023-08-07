@@ -56,3 +56,47 @@ cleaner도 클래스의 모든 인스턴스를 수거하는 형태로 사용하�
 그 결과 자바 피어를 회수할 때 네이티브 객체까지 회수하지 못한다. <br> 
 cleaner나 finalizer가 나서서 처리하기에 적당한 작업이다. <br> 
 단, 성능 저하를 감당할 수 있고 네이티브 피어가 심각한 자원을 가지고 있지 않을때만 해당된다. <br> 
+
+<hr> 
+cleaner는 사용하기에 조금 까다롭다. <br> 
+다음의 Room 클래스로 이 기능을 설명해보겠다. <br> 
+방(Room) 자원을 수거하기 전에 반드시 청소(clean)해야 한다고 가정해보자. <br>
+Room 클래스는 AutoCloseable을 구현한다. <br> 
+
+```java
+public class Room implements AutoCloseable {
+  private static final Cleaner cleaner = Cleaner.create();
+
+  // 청소가 필요한 자원. 절대 Room을 참조해서는 안된다.!
+  private static class State implements Runnable {
+    int numJunkPiles; //방 Room 안의 쓰레기 수
+
+    State(int numJunkPiles) {
+      this.numJunkPiles = numJunkPiles;
+    }
+    @Override public void run() {
+      System.out.println("장 청소");
+      numJunkPiles = 0;
+    }
+  }
+  // 방의 상태, cleanable과 공유한다.
+  private final State state;
+
+  //cleanable 객체. 수거 대상이 되면 방을 청소한다.
+  private final State state;
+
+  public Room(int numJunkPiles) {
+    state = new State(numJunkPiles);
+    cleanable = cleaner.register(this, state);
+  }
+
+  @Override public void close() {
+    cleanable.clean();
+  }
+}
+```
+<br> <br> 
+
+<h2> 안전망이나 중요하지 않은 기본 리소스를 종료하기 위한 경우 제외 cleaner와 finalizer 사용 X
+사용할 때에는 불확정성과 성능 결과에 주의해야 한다. </h2>
+
